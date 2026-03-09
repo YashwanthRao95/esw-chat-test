@@ -18,7 +18,7 @@
     }
 
     #esw-input-blocker::after {
-      content: '⏳ Connecting to assistant...';
+      content: 'Connecting to assistant...';
       display: flex;
       align-items: center;
       justify-content: center;
@@ -65,32 +65,32 @@
 
   function showBlocker() {
     blocker.style.display = 'block';
-    console.log('[ESW] ✅ Blocker ON');
+    //console.log('[ESW] ✅ Blocker ON');
   }
 
   function hideBlocker() {
     blocker.style.display = 'none';
-    console.log('[ESW] ✅ Blocker OFF — bot ready');
+    //console.log('[ESW] ✅ Blocker OFF — bot ready');
   }
 
   window.addEventListener('onEmbeddedMessagingReady', () => {
-    console.log('[ESW] Messaging Ready — registering hooks...');
+    //console.log('[ESW] Messaging Ready — registering hooks...');
 
     // Fires when user opens/maximizes the chat window
     window.addEventListener('onEmbeddedMessagingWindowMaximized', () => {
-      console.log('[ESW] 🪟 Chat window opened');
+      //console.log('[ESW] 🪟 Chat window opened');
       showBlocker();
 
       // Safety net — force remove blocker after 12 seconds
       setTimeout(() => {
         hideBlocker();
-        console.warn('[ESW] ⏰ Safety timeout — blocker removed');
+        //console.warn('[ESW] ⏰ Safety timeout — blocker removed');
       }, 5000);
     });
 
     // Fires when bot/agent sends first message — this is your trigger
     window.addEventListener('onEmbeddedMessagingNewMessage', (e) => {
-      console.log('[ESW] 💬 New message received:', e.detail);
+      //console.log('[ESW] 💬 New message received:', e.detail);
       hideBlocker();
     });
 
