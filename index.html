@@ -59,106 +59,101 @@
 
   <!-- 2. Bot detection + overlay control -->
   <script>
-    (function () {
+(function () {
 
-      const blocker = document.getElementById('esw-input-blocker');
+  const blocker = document.getElementById('esw-input-blocker');
 
-      function showBlocker() {
-        blocker.style.display = 'block';
-        console.log('[ESW] Blocker ON — waiting for Einstein bot...');
-      }
+  function showBlocker() {
+    blocker.style.display = 'block';
+    console.log('[ESW] ✅ Blocker ON');
+  }
 
-      function hideBlocker() {
-        blocker.style.display = 'none';
-        console.log('[ESW] Blocker OFF — Einstein bot is ready.');
-      }
+  function hideBlocker() {
+    blocker.style.display = 'none';
+    console.log('[ESW] ✅ Blocker OFF — bot ready');
+  }
 
-      // ── Detect bot's first message via MutationObserver on the iframe body ──
-      function observeIframeForBotMessage() {
-        // Find the ESW iframe — it loads slightly after chat opens
-        const iframeCheckInterval = setInterval(() => {
-          const iframe =
-            document.querySelector('iframe.embeddedServiceSidebarMinimizedDefaultUI') ||
-            document.querySelector('iframe[name*="esw"]') ||
-            document.querySelector('.embeddedServiceSidebar iframe') ||
-            document.querySelector('iframe[title*="Chat"]') ||
-            document.querySelector('iframe[title*="Messaging"]');
+  // ── Wait for MIAW to be fully ready first ──
+  window.addEventListener('onEmbeddedMessagingReady', () => {
+    console.log('[ESW] Messaging Ready — registering hooks...');
 
-          if (iframe && iframe.contentDocument && iframe.contentDocument.body) {
-            clearInterval(iframeCheckInterval);
-            console.log('[ESW] iframe found — observing for bot message...');
+    // ── Hook 1: Fires when the chat WINDOW OPENS ──
+    embeddedservice_bootstrap.utilAPI.launchChat();  // only if programmatic launch
 
-            const iframeBody = iframe.contentDocument.body;
+    // ── Hook 2: Fires when chat window is opened by user ──
+    window.addEventListener('onEmbeddedMessagingWindowMaximized', () => {
+      console.log('[ESW] 🪟 Chat window opened');
+      showBlocker();
+      waitForBotMessage();
 
-            const observer = new MutationObserver((mutations) => {
-              for (const mutation of mutations) {
-                for (const node of mutation.addedNodes) {
-                  if (node.nodeType !== 1) continue;
+      // Safety net
+      setTimeout(() => {
+        hideBlocker();
+        console.warn('[ESW] ⏰ Safety timeout — blocker removed');
+      }, 12000);
+    });
 
-                  // Check if this is a bot/agent message bubble
-                  const isBotMessage =
-                    node.classList?.contains('agent-message') ||
-                    node.classList?.contains('chasitorText') ||
-                    node.querySelector?.('.agent-message') ||
-                    node.querySelector?.('.chasitorText') ||
-                    node.querySelector?.('[class*="agent"]') ||
-                    node.querySelector?.('[class*="bot"]') ||
-                    node.querySelector?.('[class*="message"]');
+    // ── Hook 3: Fires when a new message arrives ──
+    window.addEventListener('onEmbeddedMessagingNewMessage', (e) => {
+      console.log('[ESW] 💬 New message event:', e.detail);
 
-                  if (isBotMessage) {
-                    hideBlocker();
-                    observer.disconnect();
-                    return;
-                  }
-                }
-              }
-            });
+      // First message = bot greeting = safe to enable input
+      hideBlocker();
+    });
 
-            observer.observe(iframeBody, {
-              childList: true,
-              subtree: true,
-            });
+  });
+
+  // ── Observe iframe for bot message as fallback ──
+  function waitForBotMessage() {
+    console.log('[ESW] ⏳ Looking for ESW iframe...');
+
+    const interval = setInterval(() => {
+      // Log ALL iframes to help identify the right one
+      const allIframes = document.querySelectorAll('iframe');
+      console.log('[ESW] iframes found:', allIframes.length);
+      allIframes.forEach((f, i) => {
+        console.log(`  iframe[${i}]:`, f.title, f.className, f.name);
+      });
+
+      const iframe =
+        document.querySelector('iframe[title="Chat"]') ||
+        document.querySelector('iframe[title="Messaging Window"]') ||
+        document.querySelector('iframe[title="Messaging"]') ||
+        document.querySelector('iframe[name*="esw"]') ||
+        document.querySelector('.embeddedServiceSidebar iframe') ||
+        allIframes[0]; // last resort — first iframe on page
+
+      if (iframe) {
+        clearInterval(interval);
+        console.log('[ESW] ✅ iframe found:', iframe.title || iframe.name);
+
+        try {
+          const body = iframe.contentDocument?.body;
+          if (!body) {
+            console.warn('[ESW] ⚠️ Cannot access iframe body');
+            return;
           }
-        }, 500); // Check every 500ms until iframe is found
+
+          const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+              for (const node of mutation.addedNodes) {
+                if (node.nodeType !== 1) continue;
+                console.log('[ESW] 🧩 Node added in iframe:', node.className);
+              }
+            }
+          });
+
+          observer.observe(body, { childList: true, subtree: true });
+
+        } catch (err) {
+          console.error('[ESW] ❌ iframe access error:', err);
+        }
       }
+    }, 500);
+  }
 
-      // ── Show blocker when chat window opens ──
-      window.addEventListener('onEmbeddedMessagingReady', () => {
-        console.log('[ESW] Messaging Ready');
-      });
-
-      // Covers both classic ESW and MIAW chat button click
-      document.addEventListener('click', (e) => {
-        const target = e.target;
-        const isLaunchButton =
-          target.closest('.embeddedServiceHelpButton') ||
-          target.closest('.helpButton') ||
-          target.closest('.fab') ||
-          target.closest('[class*="launchButton"]') ||
-          target.closest('[class*="helpButton"]');
-
-        if (isLaunchButton) {
-          showBlocker();
-          observeIframeForBotMessage();
-        }
-      });
-
-      // ── Safety net: force remove blocker after 12 seconds ──
-      document.addEventListener('click', (e) => {
-        const isLaunchButton =
-          e.target.closest('.embeddedServiceHelpButton') ||
-          e.target.closest('.helpButton');
-
-        if (isLaunchButton) {
-          setTimeout(() => {
-            hideBlocker();
-            console.warn('[ESW] Safety timeout — blocker force-removed.');
-          }, 12000);
-        }
-      });
-
-    })();
-  </script>
+})();
+</script>
 
 </body>
 </html>
