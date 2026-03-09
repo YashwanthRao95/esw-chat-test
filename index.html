@@ -73,84 +73,28 @@
     console.log('[ESW] ✅ Blocker OFF — bot ready');
   }
 
-  // ── Wait for MIAW to be fully ready first ──
   window.addEventListener('onEmbeddedMessagingReady', () => {
     console.log('[ESW] Messaging Ready — registering hooks...');
 
-    // ── Hook 1: Fires when the chat WINDOW OPENS ──
-    embeddedservice_bootstrap.utilAPI.launchChat();  // only if programmatic launch
-
-    // ── Hook 2: Fires when chat window is opened by user ──
+    // Fires when user opens/maximizes the chat window
     window.addEventListener('onEmbeddedMessagingWindowMaximized', () => {
       console.log('[ESW] 🪟 Chat window opened');
       showBlocker();
-      waitForBotMessage();
 
-      // Safety net
+      // Safety net — force remove blocker after 12 seconds
       setTimeout(() => {
         hideBlocker();
         console.warn('[ESW] ⏰ Safety timeout — blocker removed');
       }, 12000);
     });
 
-    // ── Hook 3: Fires when a new message arrives ──
+    // Fires when bot/agent sends first message — this is your trigger
     window.addEventListener('onEmbeddedMessagingNewMessage', (e) => {
-      console.log('[ESW] 💬 New message event:', e.detail);
-
-      // First message = bot greeting = safe to enable input
+      console.log('[ESW] 💬 New message received:', e.detail);
       hideBlocker();
     });
 
   });
-
-  // ── Observe iframe for bot message as fallback ──
-  function waitForBotMessage() {
-    console.log('[ESW] ⏳ Looking for ESW iframe...');
-
-    const interval = setInterval(() => {
-      // Log ALL iframes to help identify the right one
-      const allIframes = document.querySelectorAll('iframe');
-      console.log('[ESW] iframes found:', allIframes.length);
-      allIframes.forEach((f, i) => {
-        console.log(`  iframe[${i}]:`, f.title, f.className, f.name);
-      });
-
-      const iframe =
-        document.querySelector('iframe[title="Chat"]') ||
-        document.querySelector('iframe[title="Messaging Window"]') ||
-        document.querySelector('iframe[title="Messaging"]') ||
-        document.querySelector('iframe[name*="esw"]') ||
-        document.querySelector('.embeddedServiceSidebar iframe') ||
-        allIframes[0]; // last resort — first iframe on page
-
-      if (iframe) {
-        clearInterval(interval);
-        console.log('[ESW] ✅ iframe found:', iframe.title || iframe.name);
-
-        try {
-          const body = iframe.contentDocument?.body;
-          if (!body) {
-            console.warn('[ESW] ⚠️ Cannot access iframe body');
-            return;
-          }
-
-          const observer = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-              for (const node of mutation.addedNodes) {
-                if (node.nodeType !== 1) continue;
-                console.log('[ESW] 🧩 Node added in iframe:', node.className);
-              }
-            }
-          });
-
-          observer.observe(body, { childList: true, subtree: true });
-
-        } catch (err) {
-          console.error('[ESW] ❌ iframe access error:', err);
-        }
-      }
-    }, 500);
-  }
 
 })();
 </script>
