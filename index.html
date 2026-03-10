@@ -10,6 +10,21 @@
 			.embeddedMessagingFrame[class~="isMaximized"] {
 			bottom: 70px !important;
 			}
+
+			#esw-input-blocker {
+		      display: none;
+		      position: fixed;
+		      bottom: 0;
+		      right: 20px;
+		      width: 450px;        /* Match your ESW chat window width */
+		      height: 120px;        /* Match the height of the input bar */
+		      background: rgba(255, 255, 255, 0.6);
+		      z-index: 999999;
+		      cursor: not-allowed;
+		      backdrop-filter: blur(1px);
+		      pointer-events: all;
+		      bottom: 70px !important;
+		    }
 		}
 	  
 	  .embedded-messaging > .embeddedMessagingFrame[class~="isMinimized"] {
@@ -29,24 +44,22 @@
 		      width: 0;
 		      opacity: 0;
 	      }
-	  	}
+	   /* Overlay that blocks the chat input area inside the iframe */
+	    #esw-input-blocker {
+	      display: none;
+	      position: fixed;
+	      bottom: 0;
+	      right: 20px;
+	      width: 100%;        /* Match your ESW chat window width */
+	      height: 120px;        /* Match the height of the input bar */
+	      background: rgba(255, 255, 255, 0.6);
+	      z-index: 999999;
+	      cursor: not-allowed;
+	      backdrop-filter: blur(1px);
+	      pointer-events: all;
+	    }  
+	  }
 	  
-	  
-    /* Overlay that blocks the chat input area inside the iframe */
-    #esw-input-blocker {
-      display: none;
-      position: fixed;
-      bottom: 0;
-      right: 20px;
-      width: 450px;        /* Match your ESW chat window width */
-      height: 120px;        /* Match the height of the input bar */
-      background: rgba(255, 255, 255, 0.6);
-      z-index: 999999;
-      cursor: not-allowed;
-      backdrop-filter: blur(1px);
-      pointer-events: all;
-    }
-
     #esw-input-blocker::after {
       content: 'Connecting to ADP Chat...';
       display: flex;
@@ -84,7 +97,7 @@
 	const initChat = async() => {
 		const settings = embeddedservice_bootstrap.settings;
 		settings.language = 'en_US'; // For example, enter 'en' or 'en-US'
-		settings.chatButtonPosition = isMobileBP ? "5%,5%" : "100px:100px";
+		settings.chatButtonPosition = isMobileBP ? "5%,5%" : "100px,100px";
 
 		if(isMobileBP) {
 			settings.hideChatButtonOnLoad = true;
