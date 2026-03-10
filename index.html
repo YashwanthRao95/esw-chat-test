@@ -15,7 +15,7 @@
 		      display: none;
 		      position: fixed;
 		      bottom: 0;
-		      right: 20px;
+		      right: 30px;
 		      width: 450px;        /* Match your ESW chat window width */
 		      height: 120px;        /* Match the height of the input bar */
 		      background: rgba(255, 255, 255, 0.6);
@@ -49,7 +49,6 @@
 	      display: none;
 	      position: fixed;
 	      bottom: 0;
-	      right: 20px;
 	      width: 100%;        /* Match your ESW chat window width */
 	      height: 120px;        /* Match the height of the input bar */
 	      background: rgba(255, 255, 255, 0.6);
@@ -141,7 +140,7 @@
       // Safety net — force remove blocker after 12 seconds
       setTimeout(() => {
         hideBlocker();
-      }, 5000);
+      }, 12000);
     });
 
     // Fires when bot/agent sends first message — this is your trigger
