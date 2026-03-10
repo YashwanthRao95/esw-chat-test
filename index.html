@@ -67,16 +67,24 @@
   <div id="esw-input-blocker"></div>
 
   <!-- 1. Salesforce ESW Snippet -->
-  <script type='text/javascript'>
+  <script type='text/javascript' defer>
 	let popupInitialized = false;
   	const isMobileBP = window.innerWidth < 870;
 	console.log('IsMobileBp ---', isMobileBP);
 	  
-	function initEmbeddedMessaging() {
+	async function initEmbeddedMessaging() {
+		try{
+			await initChat();
+			//setTimeout(initUI, 1500);
+		} catch(err) {
+			console.error('Error loading Embedded Messaging: ', err);
+		}
+	};
+
+	const initChat = async() => {
 		const settings = embeddedservice_bootstrap.settings;
 		settings.language = 'en_US'; // For example, enter 'en' or 'en-US'
 		settings.chatButtonPosition = isMobileBP ? "5%,5%" : "100px:100px";
-		settings.enableUserInputForConversationWithBot = false;
 
 		if(isMobileBP) {
 			settings.hideChatButtonOnLoad = true;
