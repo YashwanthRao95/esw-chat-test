@@ -2,6 +2,93 @@
 <html>
 <head>
   <style>
+	  .embeddedMessagingFrame,
+	  .embeddedMessagingConversationButtonWrapper {
+		z-index: 1200;
+	  }
+		@media(min-width: 769px){
+			.embeddedMessagingFrame[class~="isMaximized"] {
+			bottom: 70px!important;
+			}
+		}
+	  .chat-popup {
+	    display: none;
+	    padding: 15px 25px;
+	    background: white;
+	    border-radius: 5px;
+	    cursor: pointer;
+	    position: fixed;
+	    right: 100px;
+	    bottom: 165px;
+	    box-shadow: 0 0 8px 4px rgba(0, 0, 0, 0.16);
+	    opacity: 0;
+	    transform: translateY(20px);
+	    animation: fadeInUp 0.4s ease forwards;
+	    z-index: 1199;
+	  }
+	
+	  .chat-popup button {
+	    position: absolute;
+	    top: 2px;
+	    right: 2px;
+	    width: 24px;
+	    height: 24px;
+	    padding: 0;
+	    transition: 0.15s linear;
+	  }
+	
+	  .chat-popup button::before {
+	    color: #010035;
+	    content: "×";
+	    font-weight: bold;
+	  }
+	
+	  .chat-popup button:hover::before {
+	    color: #d0271d;
+	  }
+	
+	  @keyframes fadeInUp {
+	    from {
+	      opacity: 0;
+	      transform: translateY(20px);
+	    }
+	    to {
+	      opacity: 1;
+	      transform: translateY(0);
+	    }
+	  }
+	  .embedded-messaging > .embeddedMessagingFrame[class~="isMinimized"] {
+	    height: 56px;
+	    width: 56px;
+	    box-shadow: 0 0 8px 4px rgba(0, 0, 0, 0.16);
+	  }
+	
+	  @media (max-width: 870px) {
+	    /* mobile */
+	    .chat-popup {
+	      padding: 15px;
+	      font-size: 14px;
+	      right: 5%;
+	      bottom: 13%;
+	    }
+	    .embedded-messaging
+	      > .embeddedMessagingFrame[class~="isMinimized"]:not(.show),
+	    .embeddedMessagingConversationButtonWrapper
+	      .embeddedMessagingConversationButton:not(.show) {
+	      visibility: hidden;
+	      height: 0;
+	      width: 0;
+	      opacity: 0;
+	    }
+	  }
+	  @media (max-width: 375px) {
+	    /* small mobile */
+	    .chat-popup {
+	      right: 23%;
+	      bottom: 5%;
+	    }
+	  }
+	  
     /* Overlay that blocks the chat input area inside the iframe */
     #esw-input-blocker {
       display: none;
@@ -18,7 +105,7 @@
     }
 
     #esw-input-blocker::after {
-      content: 'Connecting to assistant...';
+      content: 'Connecting to ADP Chat...';
       display: flex;
       align-items: center;
       justify-content: center;
@@ -32,16 +119,40 @@
 <body>
 
   <!-- Your page content -->
+  <div class="chat-popup" style="display: block;">
+	  <button class="close-popup">
+	    <span class="hide-text">Close Message</span></button><span>Hi there, what brings you here today?</span>
+	</div>
 
   <!-- Overlay div placed OVER the iframe's input area -->
   <div id="esw-input-blocker"></div>
 
   <!-- 1. Salesforce ESW Snippet -->
-  <script type='text/javascript'>
-	function initEmbeddedMessaging() {
-		try {
-			embeddedservice_bootstrap.settings.language = 'en_US'; // For example, enter 'en' or 'en-US'
+  <script type='text/javascript' defer>
+  let popupInitialized = false;
+  const isMobileBP = window.innerWidth < 870;
+  const isSEMurl = window.location.href.includes("semlps");
 
+  async function initEmbeddedMessaging() {
+    try {
+      await initChat();
+      setTimeout(initUI, 1500);
+    } catch (err) {
+      console.error("Error loading Embedded Messaging:", err);
+    }
+  }
+
+  const initChat = async () => {
+    const settings = embeddedservice_bootstrap.settings;
+    settings.language = "en_US";
+    settings.chatButtonPosition =
+      isMobileBP && isSEMurl ? "5%,5%" : "100px,100px";
+
+    if (isMobileBP && !isSEMurl) {
+      settings.hideChatButtonOnLoad = true;
+    }
+
+    try {
 			embeddedservice_bootstrap.init(
 				'00DgL000008tDT6',
 				'ADP_Chat',
@@ -53,7 +164,96 @@
 		} catch (err) {
 			console.error('Error loading Embedded Messaging: ', err);
 		}
-	};
+  };
+
+  const initUI = () => {
+    const elements = {
+      chatButton: document.querySelector(
+        "#embeddedMessagingConversationButton"
+      ),
+      frame: document.querySelector("#embeddedMessagingFrame"),
+      mobileButton: document.querySelector(".mobile-nav .cta.chat"),
+      popup: document.querySelector(".chat-popup"),
+    };
+
+    // Watch for chat opening to remove popup
+    if (elements.frame) {
+      new MutationObserver(() => {
+        if (
+          elements.frame.classList.contains("isMaximized") &&
+          elements.popup
+        ) {
+          elements.popup.remove();
+        }
+      }).observe(elements.frame, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+    }
+
+    // Mobile button handling
+    if (isMobileBP && elements.mobileButton) {
+      elements.mobileButton.style.display = "block";
+      elements.mobileButton.addEventListener("click", () => {
+        elements.popup?.remove();
+        embeddedservice_bootstrap.utilAPI.launchChat();
+      });
+    }
+
+    // Show popup and frame on desktop or SEM pages
+    const showPopup = (isMobileBP && isSEMurl) || !isMobileBP;
+    if (showPopup && elements.frame) {
+      elements.frame.classList.add("show");
+    } else if (!elements.frame && elements.chatButton) {
+      elements.chatButton.classList.add("show");
+      elements.chatButton.addEventListener("click", () => {
+        elements.popup?.remove();
+      });
+    }
+
+    // Initialize popup
+    if (showPopup && elements.popup && !popupInitialized) {
+      setTimeout(() => setupPopup(elements.popup), 1000);
+      playAudioOnce();
+      popupInitialized = true;
+    }
+  };
+
+  const setupPopup = (popup) => {
+    popup.style.display = "block";
+
+    const closeBtn = popup.querySelector(".close-popup");
+
+    // Launch chat when clicking popup (but not close button)
+    popup.addEventListener("click", (e) => {
+      if (!e.target.closest(".close-popup")) {
+        popup.remove();
+        embeddedservice_bootstrap.utilAPI.launchChat();
+      }
+    });
+
+    closeBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      popup.remove();
+    });
+  };
+
+  const playAudioOnce = () => {
+    let played = false;
+
+    const handler = () => {
+      if (played) return;
+      played = true;
+
+      new Audio("/-/media/adp2025/ui/stairs.mp3").play().catch(() => {});
+
+      document.removeEventListener("focus", handler, true);
+      document.removeEventListener("click", handler, true);
+    };
+
+    document.addEventListener("focus", handler, true);
+    document.addEventListener("click", handler, true);
+  };
 </script>
 <script type='text/javascript' src='https://orgfarm-fdf9c9915e-dev-ed.develop.my.site.com/ESWADPChat1759351536559/assets/js/bootstrap.min.js' onload='initEmbeddedMessaging()'></script>
 
@@ -65,37 +265,28 @@
 
   function showBlocker() {
     blocker.style.display = 'block';
-    //console.log('[ESW] ✅ Blocker ON');
   }
 
   function hideBlocker() {
     blocker.style.display = 'none';
-    //console.log('[ESW] ✅ Blocker OFF — bot ready');
   }
 
   window.addEventListener('onEmbeddedMessagingReady', () => {
-    //console.log('[ESW] Messaging Ready — registering hooks...');
-
     // Fires when user opens/maximizes the chat window
     window.addEventListener('onEmbeddedMessagingWindowMaximized', () => {
-      //console.log('[ESW] 🪟 Chat window opened');
       showBlocker();
 
       // Safety net — force remove blocker after 12 seconds
       setTimeout(() => {
         hideBlocker();
-        //console.warn('[ESW] ⏰ Safety timeout — blocker removed');
       }, 5000);
     });
 
     // Fires when bot/agent sends first message — this is your trigger
     window.addEventListener('onEmbeddedMessagingNewMessage', (e) => {
-      //console.log('[ESW] 💬 New message received:', e.detail);
       hideBlocker();
     });
-
   });
-
 })();
 </script>
 
